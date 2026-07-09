@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бронирование ресторанов в Бишкеке</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #333; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        header { background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%); color: white; padding: 30px 0; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+        header h1 { font-size: 32px; font-weight: 700; letter-spacing: 0.5px; }
+        header p { opacity: 0.9; margin-top: 8px; font-size: 16px; }
+
+        .loading { text-align: center; padding: 40px; color: #666; font-size: 18px; }
+        .loading-spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top: 4px solid #3949ab; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .filters { background: white; padding: 30px; border-radius: 16px; margin: 25px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .filters h2 { font-size: 22px; color: #1a237e; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+        .filter-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #555; font-size: 14px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .filter-group select, .filter-group input { width: 100%; padding: 12px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 15px; transition: all 0.3s; background: #fafafa; }
+        .filter-group select:focus, .filter-group input:focus { outline: none; border-color: #3949ab; background: white; box-shadow: 0 0 0 3px rgba(57,73,171,0.1); }
+
+        .search-btn-container { margin-top: 20px; text-align: center; }
+        .search-btn { background: linear-gradient(135deg, #3949ab 0%, #1a237e 100%); color: white; border: none; padding: 16px 50px; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(57,73,171,0.3); text-transform: uppercase; letter-spacing: 1px; }
+        .search-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(57,73,171,0.4); }
+        .search-btn:active { transform: translateY(0); }
+        .search-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .results-count { color: #666; font-size: 15px; margin: 15px 0 10px; padding-left: 5px; font-weight: 500; }
+        .results-count span { color: #1a237e; font-weight: 700; }
+
+        .restaurants-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; margin-top: 10px; }
+        .restaurant-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.3s ease; border: 1px solid #f0f0f0; }
+        .restaurant-card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(0,0,0,0.15); border-color: #3949ab; }
+        .restaurant-image { width: 100%; height: 220px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 64px; position: relative; overflow: hidden; }
+        .restaurant-image::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.4), transparent); }
+        .restaurant-image span { position: relative; z-index: 2; }
+        .restaurant-info { padding: 24px; }
+        .restaurant-name { font-size: 22px; font-weight: 700; margin-bottom: 10px; color: #1a237e; }
+        .restaurant-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .tag { background: #e8eaf6; padding: 5px 14px; border-radius: 20px; font-size: 13px; color: #3949ab; font-weight: 500; }
+        .tag.price { background: #e8f5e9; color: #2e7d32; }
+        .tag.district { background: #e3f2fd; color: #1565c0; }
+        .tag.capacity { background: #fff3e0; color: #e65100; }
+        .restaurant-short { color: #666; font-size: 15px; line-height: 1.6; }
+        .restaurant-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #f0f0f0; }
+        .price-hint { font-size: 14px; color: #888; }
+        .price-hint strong { color: #1a237e; font-size: 16px; }
+        .btn-small { background: #3949ab; color: white; border: none; padding: 8px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.3s; }
+        .btn-small:hover { background: #1a237e; }
+
+        .no-results { text-align: center; padding: 60px 20px; color: #666; grid-column: 1 / -1; }
+        .no-results-icon { font-size: 64px; margin-bottom: 20px; }
+        .no-results h3 { font-size: 22px; color: #1a237e; margin-bottom: 10px; }
+        .no-results p { font-size: 16px; }
+        .reset-btn { background: #e8eaf6; color: #3949ab; border: none; padding: 12px 30px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 20px; transition: all 0.3s; }
+        .reset-btn:hover { background: #3949ab; color: white; }
+
+        .restaurant-detail { display: none; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-top: 20px; }
+        .detail-header { background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%); color: white; padding: 40px; position: relative; }
+        .back-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-size: 15px; font-weight: 600; margin-bottom: 20px; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
+        .back-btn:hover { background: rgba(255,255,255,0.3); transform: translateX(-3px); }
+        .detail-title { font-size: 36px; font-weight: 700; margin-bottom: 12px; }
+        .detail-subtitle { opacity: 0.9; font-size: 17px; display: flex; gap: 15px; flex-wrap: wrap; }
+        .detail-subtitle span { display: flex; align-items: center; gap: 5px; }
+
+        .detail-content { padding: 35px; display: grid; grid-template-columns: 1fr 1fr; gap: 35px; }
+        @media (max-width: 900px) { .detail-content { grid-template-columns: 1fr; } }
+
+        .info-section { margin-bottom: 30px; }
+        .info-section h3 { font-size: 20px; margin-bottom: 18px; color: #1a237e; border-bottom: 3px solid #3949ab; padding-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+        .info-list { list-style: none; background: #fafafa; border-radius: 12px; overflow: hidden; }
+        .info-list li { padding: 14px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+        .info-list li:hover { background: #f0f0f0; }
+        .info-list li:last-child { border-bottom: none; }
+        .info-list li span:first-child { color: #666; font-size: 15px; }
+        .info-list li span:last-child { font-weight: 600; color: #1a237e; font-size: 15px; }
+        .yes { color: #27ae60 !important; font-weight: 700; }
+        .no { color: #e74c3c !important; font-weight: 700; }
+        .service-tag { background: #e8eaf6; color: #3949ab; padding: 3px 10px; border-radius: 6px; font-size: 13px; font-weight: 500; }
+
+        .calculator { background: #f8f9fa; padding: 30px; border-radius: 16px; border: 2px solid #e0e0e0; }
+        .calculator h3 { margin-bottom: 25px; color: #1a237e; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+        .calc-row { margin-bottom: 22px; }
+        .calc-row label { display: block; margin-bottom: 10px; font-weight: 600; color: #555; font-size: 15px; }
+        .calc-row input, .calc-row select { width: 100%; padding: 14px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; transition: all 0.3s; }
+        .calc-row input:focus, .calc-row select:focus { outline: none; border-color: #3949ab; box-shadow: 0 0 0 3px rgba(57,73,171,0.1); }
+        .calc-extras { margin-top: 10px; }
+        .calc-extra-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; border-radius: 8px; transition: background 0.2s; cursor: pointer; }
+        .calc-extra-item:hover { background: #e8eaf6; }
+        .calc-extra-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: #3949ab; cursor: pointer; }
+        .calc-extra-item label { cursor: pointer; font-size: 15px; color: #444; font-weight: 500; flex: 1; }
+        .calc-extra-price { color: #3949ab; font-weight: 700; font-size: 15px; }
+
+        .calc-total { background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%); color: white; padding: 25px; border-radius: 12px; text-align: center; margin-top: 25px; box-shadow: 0 4px 15px rgba(26,35,126,0.3); }
+        .calc-total .label { font-size: 14px; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px; }
+        .calc-total .amount { font-size: 42px; font-weight: 700; margin-top: 8px; }
+        .calc-total .per-person { font-size: 14px; opacity: 0.8; margin-top: 5px; }
+
+        .booking-form { margin-top: 30px; }
+        .booking-form h3 { margin-bottom: 25px; color: #1a237e; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; font-size: 15px; }
+        .form-group input { width: 100%; padding: 14px; border: 2px solid #ddd; border-radius: 10px; font-size: 15px; transition: all 0.3s; }
+        .form-group input:focus { outline: none; border-color: #3949ab; box-shadow: 0 0 0 3px rgba(57,73,171,0.1); }
+        .form-group input::placeholder { color: #aaa; }
+        .submit-btn { width: 100%; padding: 18px; background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(39,174,96,0.3); text-transform: uppercase; letter-spacing: 0.5px; }
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(39,174,96,0.4); }
+        .submit-btn:active { transform: translateY(0); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal { background: white; padding: 40px; border-radius: 20px; max-width: 450px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalIn 0.3s ease; }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .modal-icon { font-size: 80px; margin-bottom: 20px; }
+        .modal h3 { font-size: 26px; color: #1a237e; margin-bottom: 15px; }
+        .modal p { color: #666; font-size: 16px; line-height: 1.6; margin-bottom: 25px; }
+        .modal-btn { background: #3949ab; color: white; border: none; padding: 14px 40px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.3s; }
+        .modal-btn:hover { background: #1a237e; }
+
+        .error-message { background: #ffebee; color: #c62828; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center; }
+        .error-message button { background: #c62828; color: white; border: none; padding: 10px 25px; border-radius: 8px; margin-top: 10px; cursor: pointer; font-weight: 600; }
+
+        @media (max-width: 768px) {
+            .filters-grid { grid-template-columns: 1fr; }
+            .restaurants-grid { grid-template-columns: 1fr; }
+            .detail-title { font-size: 26px; }
+            .detail-header { padding: 25px; }
+            .detail-content { padding: 20px; }
+            header h1 { font-size: 24px; }
+            .search-btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🍽️ Бронирование ресторанов в Бишкеке</h1>
+        <p>Найдите идеальное место для вашего мероприятия</p>
+    </header>
+
+    <div class="container">
+        <div id="mainPage">
+            <div class="filters">
+                <h2>🔍 Найдите идеальный ресторан</h2>
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label>Тип мероприятия</label>
+                        <select id="eventType">
+                            <option value="">Все типы</option>
+                            <option value="wedding">Свадьба</option>
+                            <option value="birthday">День рождения</option>
+                            <option value="corporate">Корпоратив</option>
+                            <option value="family">Семейный ужин</option>
+                            <option value="business">Деловая встреча</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Количество гостей</label>
+                        <select id="guestCount">
+                            <option value="">Любое</option>
+                            <option value="10">До 10</option>
+                            <option value="20">До 20</option>
+                            <option value="50">До 50</option>
+                            <option value="100">До 100</option>
+                            <option value="200">Более 100</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Район</label>
+                        <select id="district">
+                            <option value="">Все районы</option>
+                            <option value="center">Центр</option>
+                            <option value="south">Южная магистраль</option>
+                            <option value="east">Восточный</option>
+                            <option value="west">Западный</option>
+                            <option value="north">Северный</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Средний чек на человека</label>
+                        <select id="avgPrice">
+                            <option value="">Любой</option>
+                            <option value="1000">До 1000 сом</option>
+                            <option value="2000">До 2000 сом</option>
+                            <option value="3000">До 3000 сом</option>
+                            <option value="5000">До 5000 сом</option>
+                            <option value="5001">Более 5000 сом</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Дата проведения</label>
+                        <input type="date" id="eventDate">
+                    </div>
+                </div>
+                <div class="search-btn-container">
+                    <button class="search-btn" onclick="filterRestaurants()">🔍 Найти рестораны</button>
+                </div>
+            </div>
+
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <div>Загрузка ресторанов...</div>
+            </div>
+
+            <div id="errorMessage" class="error-message" style="display: none;">
+                <div>⚠️ Ошибка загрузки данных</div>
+                <div style="font-size: 14px; margin-top: 8px;">Проверьте подключение к интернету</div>
+                <button onclick="loadRestaurants()">Повторить</button>
+            </div>
+
+            <div class="results-count" id="resultsCount"></div>
+            <div id="restaurantsList" class="restaurants-grid"></div>
+        </div>
+
+        <div id="detailPage" class="restaurant-detail">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMain()">← Назад к списку</button>
+                <h2 class="detail-title" id="detailName">Название ресторана</h2>
+                <p class="detail-subtitle" id="detailSubtitle"></p>
+            </div>
+
+            <div class="detail-content">
+                <div class="info-column">
+                    <div class="info-section">
+                        <h3>📋 Информация о ресторане</h3>
+                        <ul class="info-list" id="detailInfo"></ul>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>✨ Дополнительные услуги</h3>
+                        <ul class="info-list" id="detailServices"></ul>
+                    </div>
+                </div>
+
+                <div class="calc-column">
+                    <div class="calculator">
+                        <h3>🧮 Калькулятор стоимости</h3>
+
+                        <div class="calc-row">
+                            <label>Количество гостей</label>
+                            <input type="number" id="calcGuests" min="1" max="500" value="10" onchange="calculateTotal()">
+                        </div>
+
+                        <div class="calc-row">
+                            <label>Тариф</label>
+                            <select id="calcTariff" onchange="calculateTotal()">
+                                <option value="standard">Стандарт</option>
+                                <option value="premium">Премиум</option>
+                                <option value="luxury">Люкс</option>
+                            </select>
+                        </div>
+
+                        <div class="calc-row">
+                            <label>Дополнительные услуги</label>
+                            <div class="calc-extras" id="calcExtras"></div>
+                        </div>
+
+                        <div class="calc-total">
+                            <div class="label">Итоговая сумма</div>
+                            <div class="amount" id="totalAmount">0 сом</div>
+                            <div class="per-person" id="perPerson"></div>
+                        </div>
+                    </div>
+
+                    <form class="booking-form" id="bookingForm" onsubmit="handleBooking(event)">
+                        <h3>📅 Оформить бронирование</h3>
+
+                        <div class="form-group">
+                            <label>Ваше имя *</label>
+                            <input type="text" id="bookName" required placeholder="Введите имя">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Телефон *</label>
+                            <input type="tel" id="bookPhone" required placeholder="+996 XXX XX XX XX" 
+                                oninput="formatPhone(this)" onfocus="if(this.value==='') this.value='+996 '"
+                                maxlength="17" style="font-family: 'Courier New', monospace; font-size: 16px; letter-spacing: 0.5px;">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="text" id="bookEmail" placeholder="email@example.com" 
+                                oninput="validateEmailLive(this)"
+                                style="transition: border-color 0.3s, box-shadow 0.3s;">
+                            <span id="emailError" style="color: #e74c3c; font-size: 13px; margin-top: 6px; display: none; font-weight: 500;">⚠ Введите корректный email (например: user@gmail.com)</span>
+                            <span id="emailSuccess" style="color: #27ae60; font-size: 13px; margin-top: 6px; display: none; font-weight: 500;">✓ Email выглядит корректно</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Дата и время *</label>
+                            <input type="datetime-local" id="bookDateTime" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <input type="text" id="bookComment" placeholder="Особые пожелания, количество детей, диетические ограничения...">
+                        </div>
+
+                        <button type="submit" class="submit-btn" id="submitBtn">✓ Забронировать</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-icon">🎉</div>
+            <h3>Бронирование успешно!</h3>
+            <p id="modalText">Ваша заявка принята. Мы свяжемся с вами в ближайшее время для подтверждения.</p>
+            <button class="modal-btn" onclick="closeModal()">Отлично</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script>
+        // === SUPABASE CONFIG ===
+        const SUPABASE_URL = 'https://avfrjlekbqjgepebvypd.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_upzvWzULTG6M80Ysvund4Q_cEfhyD-h';
+
+        // Initialize Supabase client
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // === DATA ===
+        let restaurants = [];
+        let currentRestaurant = null;
+
+        const eventTypeNames = {
+            wedding: 'Свадьба', birthday: 'День рождения', corporate: 'Корпоратив',
+            family: 'Семейный ужин', business: 'Деловая встреча'
+        };
+
+        const districtNames = {
+            center: 'Центр', south: 'Южная магистраль', east: 'Восточный',
+            west: 'Западный', north: 'Северный'
+        };
+
+        // Restaurant-specific data (will be moved to DB later)
+        const restaurantDetails = {
+            'Navat': {
+                eventTypes: ['wedding', 'birthday', 'corporate', 'family'],
+                services: ['Живая музыка', 'Парковка', 'Танцпол', 'Фотозона', 'VIP-зал'],
+                tariffs: { standard: 2500, premium: 3500, luxury: 5000 },
+                extras: { 'Декорации': 15000, 'Ведущий': 12000, 'Фотограф': 8000, 'DJ': 10000 }
+            },
+            'Supara': {
+                eventTypes: ['wedding', 'birthday', 'family'],
+                services: ['Банкетный зал', 'Летняя веранда', 'Детская площадка', 'Парковка', 'Национальное шоу'],
+                tariffs: { standard: 3000, premium: 4000, luxury: 6000 },
+                extras: { 'Национальное шоу': 20000, 'Конные прогулки': 8000, 'Фейерверк': 25000, 'Юрта VIP': 15000 }
+            },
+            'City Burger': {
+                eventTypes: ['birthday', 'family', 'business'],
+                services: ['Wi-Fi', 'Трансляция спортивных матчей', 'Бизнес-ланч', 'Караоке'],
+                tariffs: { standard: 1200, premium: 1800, luxury: 2500 },
+                extras: { 'Караоке': 5000, 'DJ': 6000, 'Тематический декор': 4000 }
+            },
+            'Omar Khayyam': {
+                eventTypes: ['wedding', 'corporate', 'business'],
+                services: ['VIP-зал', 'Кальянная', 'Живая музыка', 'Парковка', 'Охраняемая парковка'],
+                tariffs: { standard: 4500, premium: 6000, luxury: 9000 },
+                extras: { 'Декорации премиум': 30000, 'Ведущий-звезда': 50000, 'Лимузин': 30000, 'Фейерверк': 40000 }
+            },
+            'Faiza': {
+                eventTypes: ['family', 'business', 'birthday'],
+                services: ['Детская комната', 'Парковка', 'Банкетное меню', 'Доставка'],
+                tariffs: { standard: 800, premium: 1200, luxury: 1800 },
+                extras: { 'Торт на заказ': 3000, 'Аниматор': 8000, 'Декор': 5000 }
+            },
+            'Chaikhana No.1': {
+                eventTypes: ['corporate', 'family', 'birthday'],
+                services: ['Летняя веранда', 'Караоке', 'Парковка', 'Спортивные трансляции', 'Настольный теннис'],
+                tariffs: { standard: 1800, premium: 2500, luxury: 3500 },
+                extras: { 'Живая музыка': 10000, 'Фотозона': 5000, 'Фейерверк': 20000, 'Шоу-балет': 15000 }
+            },
+            'Frunze': {
+                eventTypes: ['wedding', 'corporate', 'birthday', 'business'],
+                services: ['Банкетный зал на 300 персон', 'Терраса', 'Парковка на 100 мест', 'Гримерка', 'Оборудование для презентаций'],
+                tariffs: { standard: 5500, premium: 7500, luxury: 12000 },
+                extras: { 'Премиум-декор': 50000, 'Звезда эстрады': 100000, 'Световое шоу': 40000, 'Пиротехника': 35000, 'Видеосъемка': 20000 }
+            },
+            'Burger House': {
+                eventTypes: ['birthday', 'family', 'business'],
+                services: ['Wi-Fi', 'PlayStation', 'Настольные игры', 'Доставка'],
+                tariffs: { standard: 900, premium: 1300, luxury: 1800 },
+                extras: { 'Караоке': 4000, 'DJ': 5000, 'Тематическая вечеринка': 6000 }
+            }
+        };
+
+        // === API FUNCTIONS ===
+        async function loadRestaurants() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('restaurantsList').innerHTML = '';
+
+            try {
+                const { data, error } = await supabase
+                    .from('restaurants')
+                    .select('*');
+
+                if (error) throw error;
+
+                restaurants = data.map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    district: r.district,
+                    districtName: districtNames[r.district] || r.district,
+                    capacity: r.capacity,
+                    avgPrice: r.avg_price,
+                    priceRange: `${r.avg_price - 500} — ${r.avg_price + 500} сом`,
+                    hours: r.hours,
+                    deposit: r.deposit,
+                    kidsPlayground: r.kids_playground,
+                    ownAlcohol: r.own_alcohol,
+                    ownMeat: r.own_meat,
+                    description: r.description,
+                    imageUrl: r.image_url,
+                    ...restaurantDetails[r.name]
+                }));
+
+                document.getElementById('loadingIndicator').style.display = 'none';
+                filterRestaurants();
+            } catch (error) {
+                console.error('Error loading restaurants:', error);
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        async function saveBooking(bookingData) {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Отправка...';
+
+            try {
+                const { error } = await supabase
+                    .from('bookings')
+                    .insert([bookingData]);
+
+                if (error) throw error;
+
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✓ Забронировать';
+                return true;
+            } catch (error) {
+                console.error('Error saving booking:', error);
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✓ Забронировать';
+                alert('Ошибка при отправке заявки: ' + error.message);
+                return false;
+            }
+        }
+
+        // === INIT ===
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('eventDate').min = today;
+            loadRestaurants();
+        });
+
+        // === FILTERS ===
+        function filterRestaurants() {
+            const eventType = document.getElementById('eventType').value;
+            const guestCount = document.getElementById('guestCount').value;
+            const district = document.getElementById('district').value;
+            const avgPrice = document.getElementById('avgPrice').value;
+
+            const filtered = restaurants.filter(r => {
+                if (eventType && !r.eventTypes.includes(eventType)) return false;
+
+                if (guestCount) {
+                    const guests = parseInt(guestCount);
+                    if (guests === 10 && r.capacity > 10) return false;
+                    if (guests === 20 && r.capacity > 20) return false;
+                    if (guests === 50 && r.capacity > 50) return false;
+                    if (guests === 100 && r.capacity > 100) return false;
+                    if (guests === 200 && r.capacity <= 100) return false;
+                }
+
+                if (district && r.district !== district) return false;
+
+                if (avgPrice) {
+                    const price = parseInt(avgPrice);
+                    if (price <= 5000 && r.avgPrice > price) return false;
+                    if (price === 5001 && r.avgPrice <= 5000) return false;
+                }
+
+                return true;
+            });
+
+            document.getElementById('resultsCount').innerHTML = 
+                `Найдено ресторанов: <span>${filtered.length}</span> из ${restaurants.length}`;
+            renderRestaurants(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('eventType').value = '';
+            document.getElementById('guestCount').value = '';
+            document.getElementById('district').value = '';
+            document.getElementById('avgPrice').value = '';
+            document.getElementById('eventDate').value = '';
+            filterRestaurants();
+        }
+
+        function renderRestaurants(list) {
+            const container = document.getElementById('restaurantsList');
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <div class="no-results-icon">😕</div>
+                        <h3>По вашим критериям ничего не найдено</h3>
+                        <p>Попробуйте изменить фильтры — уменьшите количество гостей или расширьте диапазон цен</p>
+                        <button class="reset-btn" onclick="resetFilters()">Сбросить все фильтры</button>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = list.map(r => {
+                const eventTags = r.eventTypes.slice(0, 3).map(t => 
+                    `<span class="tag">${eventTypeNames[t]}</span>`
+                ).join('');
+
+                return `
+                <div class="restaurant-card" onclick="showDetail('${r.id}')">
+                    <div class="restaurant-image"><span>🍽️</span></div>
+                    <div class="restaurant-info">
+                        <div class="restaurant-name">${r.name}</div>
+                        <div class="restaurant-meta">
+                            <span class="tag district">${r.districtName}</span>
+                            <span class="tag price">${r.priceRange}</span>
+                            <span class="tag capacity">до ${r.capacity} гостей</span>
+                        </div>
+                        <div class="restaurant-short">${r.description}</div>
+                        <div class="restaurant-footer">
+                            <span class="price-hint">от <strong>${r.tariffs.standard.toLocaleString()} сом</strong>/чел</span>
+                            <button class="btn-small">Подробнее →</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function showDetail(id) {
+            currentRestaurant = restaurants.find(r => r.id === id);
+            if (!currentRestaurant) return;
+
+            document.getElementById('mainPage').style.display = 'none';
+            document.getElementById('detailPage').style.display = 'block';
+            window.scrollTo(0, 0);
+
+            document.getElementById('detailName').textContent = currentRestaurant.name;
+
+            const eventNames = currentRestaurant.eventTypes.map(t => eventTypeNames[t]).join(' • ');
+            document.getElementById('detailSubtitle').innerHTML = 
+                `<span>📍 ${currentRestaurant.districtName}</span><span>🎭 ${eventNames}</span>`;
+
+            const infoHtml = `
+                <li><span>Вместимость</span><span>${currentRestaurant.capacity} человек</span></li>
+                <li><span>Часы работы</span><span>${currentRestaurant.hours}</span></li>
+                <li><span>Депозит</span><span>${currentRestaurant.deposit > 0 ? currentRestaurant.deposit.toLocaleString() + ' сом' : 'Не требуется'}</span></li>
+                <li><span>Детская площадка</span><span class="${currentRestaurant.kidsPlayground ? 'yes' : 'no'}">${currentRestaurant.kidsPlayground ? 'Да ✓' : 'Нет ✗'}</span></li>
+                <li><span>Свой алкоголь</span><span class="${currentRestaurant.ownAlcohol ? 'yes' : 'no'}">${currentRestaurant.ownAlcohol ? 'Разрешено ✓' : 'Запрещено ✗'}</span></li>
+                <li><span>Своё мясо</span><span class="${currentRestaurant.ownMeat ? 'yes' : 'no'}">${currentRestaurant.ownMeat ? 'Разрешено ✓' : 'Запрещено ✗'}</span></li>
+                <li><span>Средний чек</span><span>${currentRestaurant.priceRange}</span></li>
+            `;
+            document.getElementById('detailInfo').innerHTML = infoHtml;
+
+            document.getElementById('detailServices').innerHTML = 
+                currentRestaurant.services.map(s => 
+                    `<li><span>${s}</span><span class="service-tag">✓ Доступно</span></li>`
+                ).join('');
+
+            const extrasContainer = document.getElementById('calcExtras');
+            extrasContainer.innerHTML = Object.entries(currentRestaurant.extras).map(([name, price]) => `
+                <div class="calc-extra-item" onclick="toggleExtra(this)">
+                    <input type="checkbox" value="${price}" onchange="calculateTotal()" onclick="event.stopPropagation()">
+                    <label onclick="event.stopPropagation()">${name}</label>
+                    <span class="calc-extra-price">${price.toLocaleString()} сом</span>
+                </div>
+            `).join('');
+
+            const filterGuestCount = document.getElementById('guestCount').value;
+            let defaultGuests = 10;
+            if (filterGuestCount) {
+                defaultGuests = parseInt(filterGuestCount);
+            }
+            document.getElementById('calcGuests').value = Math.min(defaultGuests, currentRestaurant.capacity);
+            document.getElementById('calcGuests').max = currentRestaurant.capacity;
+            document.getElementById('calcTariff').value = 'standard';
+            calculateTotal();
+        }
+
+        function toggleExtra(el) {
+            const cb = el.querySelector('input');
+            cb.checked = !cb.checked;
+            calculateTotal();
+        }
+
+        function showMain() {
+            document.getElementById('detailPage').style.display = 'none';
+            document.getElementById('mainPage').style.display = 'block';
+            currentRestaurant = null;
+            window.scrollTo(0, 0);
+        }
+
+        function calculateTotal() {
+            if (!currentRestaurant) return;
+
+            const guests = parseInt(document.getElementById('calcGuests').value) || 0;
+            if (guests > currentRestaurant.capacity) {
+                document.getElementById('calcGuests').value = currentRestaurant.capacity;
+            }
+            const validGuests = Math.min(guests, currentRestaurant.capacity);
+
+            const tariff = document.getElementById('calcTariff').value;
+            const pricePerPerson = currentRestaurant.tariffs[tariff] || currentRestaurant.tariffs.standard;
+
+            let total = validGuests * pricePerPerson;
+            total += currentRestaurant.deposit;
+
+            document.querySelectorAll('#calcExtras input:checked').forEach(cb => {
+                total += parseInt(cb.value);
+            });
+
+            document.getElementById('totalAmount').textContent = total.toLocaleString() + ' сом';
+            document.getElementById('perPerson').textContent = validGuests > 0 
+                ? `≈ ${Math.round(total / validGuests).toLocaleString()} сом на человека` 
+                : '';
+        }
+
+        async function handleBooking(e) {
+            e.preventDefault();
+
+            if (!validateEmailSubmit()) {
+                return;
+            }
+
+            const name = document.getElementById('bookName').value;
+            const phone = document.getElementById('bookPhone').value;
+            const email = document.getElementById('bookEmail').value;
+            const dateTime = document.getElementById('bookDateTime').value;
+            const comment = document.getElementById('bookComment').value;
+            const guests = parseInt(document.getElementById('calcGuests').value);
+            const tariff = document.getElementById('calcTariff').value;
+            const total = parseInt(document.getElementById('totalAmount').textContent.replace(/[^0-9]/g, ''));
+
+            const extras = [];
+            document.querySelectorAll('#calcExtras input:checked').forEach(cb => {
+                const label = cb.closest('.calc-extra-item').querySelector('label').textContent;
+                extras.push({ name: label, price: parseInt(cb.value) });
+            });
+
+            const bookingData = {
+                restaurant_id: currentRestaurant.id,
+                guest_name: name,
+                phone: phone,
+                email: email || null,
+                guest_count: guests,
+                event_date: dateTime,
+                tariff: tariff,
+                total_amount: total,
+                extras: extras,
+                comment: comment || null
+            };
+
+            const success = await saveBooking(bookingData);
+
+            if (success) {
+                document.getElementById('modalText').innerHTML = 
+                    `Ресторан: <strong>${currentRestaurant.name}</strong><br>` +
+                    `Имя: ${name}<br>` +
+                    `Сумма: <strong>${total.toLocaleString()} сом</strong><br><br>` +
+                    `Мы свяжемся с вами в ближайшее время для подтверждения бронирования.`;
+
+                document.getElementById('modalOverlay').style.display = 'flex';
+                document.getElementById('bookingForm').reset();
+            }
+        }
+
+        function closeModal(e) {
+            if (!e || e.target === document.getElementById('modalOverlay')) {
+                document.getElementById('modalOverlay').style.display = 'none';
+            }
+        }
+
+        // Phone mask: +996 XXX XX XX XX
+        function formatPhone(input) {
+            let value = input.value;
+
+            if (!value.startsWith('+996')) {
+                value = '+996 ';
+            }
+
+            let digits = value.replace(/[^0-9]/g, '');
+
+            if (digits.length === 0) {
+                input.value = '+996 ';
+                return;
+            }
+
+            if (digits.startsWith('996')) {
+                digits = digits.substring(3);
+            }
+
+            digits = digits.substring(0, 10);
+
+            let formatted = '+996';
+            if (digits.length > 0) {
+                formatted += ' ' + digits.substring(0, 3);
+            }
+            if (digits.length > 3) {
+                formatted += ' ' + digits.substring(3, 5);
+            }
+            if (digits.length > 5) {
+                formatted += ' ' + digits.substring(5, 7);
+            }
+            if (digits.length > 7) {
+                formatted += ' ' + digits.substring(7, 9);
+            }
+            if (digits.length > 9) {
+                formatted += ' ' + digits.substring(9, 10);
+            }
+
+            input.value = formatted;
+        }
+
+        // Live email validation
+        function validateEmailLive(input) {
+            const email = input.value.trim();
+            const errorSpan = document.getElementById('emailError');
+            const successSpan = document.getElementById('emailSuccess');
+
+            errorSpan.style.display = 'none';
+            successSpan.style.display = 'none';
+
+            if (email === '') {
+                input.style.borderColor = '#ddd';
+                input.style.boxShadow = 'none';
+                return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+            if (email.length < 5) {
+                input.style.borderColor = '#ddd';
+                input.style.boxShadow = 'none';
+                return;
+            }
+
+            if (!emailRegex.test(email)) {
+                input.style.borderColor = '#e74c3c';
+                input.style.boxShadow = '0 0 0 3px rgba(231, 76, 60, 0.2)';
+                errorSpan.style.display = 'block';
+            } else {
+                input.style.borderColor = '#27ae60';
+                input.style.boxShadow = '0 0 0 3px rgba(39, 174, 96, 0.2)';
+                successSpan.style.display = 'block';
+            }
+        }
+
+        function validateEmailSubmit() {
+            const input = document.getElementById('bookEmail');
+            const email = input.value.trim();
+
+            if (email === '') return true;
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+            if (!emailRegex.test(email)) {
+                input.style.borderColor = '#e74c3c';
+                input.style.boxShadow = '0 0 0 3px rgba(231, 76, 60, 0.2)';
+                document.getElementById('emailError').style.display = 'block';
+                input.focus();
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>

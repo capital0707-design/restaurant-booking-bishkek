@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "restaurant-booking-bishkek",
+  "builds": [
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    }
+  ]
+}
