@@ -459,15 +459,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('eventDate').min = today;
-
-            // Add event listeners to all filters
-            ['eventType', 'guestCount', 'district', 'avgPrice', 'eventDate'].forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.addEventListener('change', filterRestaurants);
-                }
-            });
-
             loadRestaurants();
         });
 
