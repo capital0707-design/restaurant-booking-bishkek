@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -323,7 +324,7 @@
         const SUPABASE_KEY = 'sb_publishable_upzvWzULTG6M80Ysvund4Q_cEfhyD-h';
 
         // Initialize Supabase client
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // === DATA ===
         let restaurants = [];
@@ -398,7 +399,7 @@
             document.getElementById('restaurantsList').innerHTML = '';
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('restaurants')
                     .select('*');
 
@@ -437,7 +438,7 @@
             submitBtn.textContent = 'Отправка...';
 
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('bookings')
                     .insert([bookingData]);
 
@@ -459,6 +460,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('eventDate').min = today;
+
+            // Add event listeners to all filters
+            ['eventType', 'guestCount', 'district', 'avgPrice', 'eventDate'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('change', filterRestaurants);
+                }
+            });
+
             loadRestaurants();
         });
 
